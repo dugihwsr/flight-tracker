@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flight Tracker</title>
+<link rel="stylesheet" href="vendor/leaflet.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>Flight Tracker</h1>
+  <nav>
+    <button id="tab-map" class="tab active">Map</button>
+    <button id="tab-ticker" class="tab">Ticker</button>
+  </nav>
+  <span id="status" class="status">connecting…</span>
+  <button id="usage-badge" class="badge-btn" title="API usage — click for details" hidden></button>
+  <button id="refresh" title="Refresh tracked flights and the map now">↻ Refresh</button>
+  <button id="data-btn" title="Data usage & refresh settings">⚙ Data</button>
+</header>
+
+<dialog id="data-panel">
+  <div class="dp-head"><h3>Data &amp; refresh</h3><button id="dp-close" class="x" title="Close">×</button></div>
+  <div class="dp-body">
+    <h4>Refresh mode</h4>
+    <label class="opt"><input type="radio" name="mode" value="live"><span><b>Live</b> — refresh at the chosen speed, even if a limited plan runs out early.</span></label>
+    <label class="opt"><input type="radio" name="mode" value="saver"><span><b>Data saver</b> (recommended) — slows itself down so free-plan limits last the whole day or month.</span></label>
+    <label class="opt"><input type="radio" name="mode" value="manual"><span><b>Manual</b> — no background refreshing; update only when you press ↻ Refresh.</span></label>
+    <div class="dp-grid">
+      <label>Tracked flights refresh
+        <select id="dp-poll"></select></label>
+      <label>Map refresh
+        <select id="dp-region">
+          <option value="follow">Follow mode</option><option value="15">Every 15 s</option><option value="30">Every 30 s</option>
+          <option value="60">Every minute</option><option value="300">Every 5 minutes</option><option value="manual">Only when I press Refresh</option>
+        </select></label>
+    </div>
+    <p id="dp-effective" class="muted small"></p>
+    <h4>API usage</h4>
+    <div id="dp-usage"></div>
+    <p class="muted small">Limits are per provider plan and reset on a UTC schedule. Adjust them for your plan with the
+      <code>OPENSKY_DAILY_LIMIT</code>, <code>AVIATIONSTACK_MONTHLY_LIMIT</code> … environment variables.
+      Tracked flights always get priority: map browsing stops before the last 30% of a limited allowance.</p>
+    <div class="row"><button id="dp-refresh" class="primary">↻ Refresh now</button></div>
+  </div>
+</dialog>
+
+<main id="view-map">
+  <aside id="sidebar">
+    <form id="search-form">
+      <input id="search" placeholder="Flight (UA123, BAW117), hex, or airline" autocomplete="off">
+      <button>Search</button>
+    </form>
+    <div id="search-results" hidden></div>
+    <section id="detail" hidden></section>
+    <details id="filters" class="filters">
+      <summary>Filters <span id="filter-count" class="muted"></span></summary>
+      <form id="f-form" autocomplete="off">
+        <div class="fhead"><span class="flabel">Category</span><button type="button" class="link" id="f-clear-cats">Clear</button></div>
+        <div id="cat-chips" class="chips"></div>
+        <label class="fl">Airline
+          <span class="fwrap"><input id="f-airline" list="airline-list" placeholder="e.g. Delta, UAL, DL">
+            <button type="button" class="fclear" data-clear="airline" title="Clear airline" aria-label="Clear airline">×</button></span></label>
+        <label class="fl">Airport (origin or destination)
+          <span class="fwrap"><input id="f-airport" placeholder="e.g. PHX or KPHX">
+            <button type="button" class="fclear" data-clear="airport" title="Clear airport" aria-label="Clear airport">×</button></span></label>
+        <label class="check"><input type="checkbox" id="f-airborne"> Hide aircraft on the ground</label>
+        <div class="row">
+          <button type="submit" class="primary grow" id="f-search">Search</button>
+          <button type="button" id="f-reset" title="Remove every filter">Clear all</button>
+        </div>
+        <p id="f-hint" class="muted small" hidden></p>
+      </form>
+      <datalist id="airline-list"></datalist>
+    </details>
+    <section>
+      <h2>Tracked <span id="tracked-count" class="muted"></span></h2>
+      <div id="tracked-list"></div>
+    </section>
+  </aside>
+  <div id="map-wrap">
+    <div id="map"></div>
+    <div id="map-note" class="map-note" hidden></div>
+    <form id="place-form" class="place">
+      <input id="place" placeholder="Jump to place (e.g. Phoenix, Arizona)">
+    </form>
+  </div>
+</main>
+
+<main id="view-flight" hidden>
+  <div class="fp-top">
+    <button id="fp-back">← Ticker</button>
+    <button id="fp-prev" title="Previous flight (←)">‹</button>
+    <span id="fp-pos" class="muted"></span>
+    <button id="fp-next" title="Next flight (→)">›</button>
+    <label class="check"><input type="checkbox" id="fp-rotate"> Auto-rotate</label>
+    <span class="grow"></span>
+    <button id="fp-map">View on map</button>
+    <button id="fp-untrack" class="danger">Stop tracking</button>
+    <button id="fp-full" title="Full screen (F)">Full screen</button>
+  </div>
+  <div id="fp-body"></div>
+</main>
+
+<main id="view-ticker" hidden>
+  <div class="ticker-bar">
+    <span class="muted">Live board of tracked flights</span>
+    <button id="fullscreen">Full screen</button>
+  </div>
+  <div class="ticker-scroll">
+    <table id="ticker">
+      <thead><tr>
+        <th>Airline</th><th>Flight</th><th>Route</th><th>Arrives</th><th>Delay</th>
+        <th>Total time</th><th>Heading</th><th>Speed</th><th>Altitude</th><th>Status</th><th></th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+    <p id="ticker-empty" class="muted" hidden>No flights tracked yet. Switch to the Map, search or click a flight, and press “Track”.</p>
+  </div>
+</main>
+
+<script src="vendor/leaflet.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+services:
+  flighttracker:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - flightdata:/data
+    restart: unless-stopped
+volumes:
+  flightdata:
