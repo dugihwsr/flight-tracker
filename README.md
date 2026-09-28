@@ -100,4 +100,4 @@ pytest
 
 ## License
 
-Not yet specified — add a `LICENSE` file to set the terms you want this repository to carry.
+[MIT](LICENSE)
